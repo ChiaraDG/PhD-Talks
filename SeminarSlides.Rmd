@@ -1,0 +1,809 @@
+---
+title: "Design and Analysis of a Two-Phase Study for Multivariate Longitudinal Outcomes"
+author: "Chiara Di Gravio, Ran Tao, Jonathan Schildcrout"
+institute: "Vanderbilt University"
+date: "September 29, 2021"
+output:
+  xaringan::moon_reader:
+    css: xaringan-themer.css
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+    includes:
+      after_body: insert-logo.html
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+library(tidyverse)
+library(latex2exp)
+library(knitr)
+library(kableExtra)
+library(wesanderson)
+
+style_mono_accent(
+  base_color = "#1F4257",
+  extra_css = list(
+    ".has-continuation" = list(
+      "display" = "block !important"),
+    ".small" = list("font-size" = "80%"), 
+    ".full-width" = list(
+    display = "flex",
+    width   = "100%",
+    flex    = "1 1 auto")
+))
+```
+
+class: middle
+
+* Motivation
+
+* Lung Health Study
+
+* Two-Phase Outcome Dependent Sampling
+
+* Results
+
+  - Simulation Studies
+  
+  - Lung Health Study
+
+---
+
+class: middle
+
+## Motivation
+
+.pull-left[
+
+
+```{r, out.width='150%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('MotFig.png')
+```
+
+]
+
+.pull-right[
+* Electronic health records and existing cohort studies provide easily accessible data on phenotype
+
+* Researchers might be interested in an exposure that is unavailable and expensive to collect
+
+* We want to use the available data to identify the most informative subjects for whom the expensive exposure will be collected.
+]
+
+---
+
+class:middle
+
+.pull-left[
+
+```{r, echo = FALSE, message = FALSE, fig.align = "center", fig.height = 6, fig.retina=3}
+# set possible sample size
+N       <- 1:120
+d       <- 5
+s       <- c(8, 6, 5, 3)
+# set matrix of results
+mat.res <- matrix(NA, ncol = 3, nrow = length(N))
+tot.mat <- NULL
+
+for(i in seq_along(s)){
+  ptest          <-  power.t.test(n = N, delta = d, sd = s[i], power=NULL)
+  
+  # save into a matrix
+  mat.res[, 1] <- ptest$n
+  mat.res[, 2] <- ptest$power
+  mat.res[, 3] <- s[i]
+  
+  tot.mat      <- rbind(tot.mat, mat.res)
+  
+}
+# transform results in a dataframe
+colnames(tot.mat) <- c("N", "power", "sd")
+dat               <- data.frame(tot.mat)
+dat$sd            <- as.character(dat$sd)
+# plot
+p1 <- ggplot(dat, aes(x = N, y = power, col = sd)) + geom_line(size = 2) +
+  theme_bw() + geom_vline(xintercept = 25, linetype = "dashed", size = 0.4) +
+  labs(y = "Power", x = "Sample Size", col = "Standard Deviation") +
+  scale_x_continuous(breaks=seq(0,120,10)) + theme(legend.position = "top") +
+  scale_y_continuous(breaks=seq(0,1,0.1)) + 
+  scale_color_brewer(palette="Blues")
+
+p1
+```
+
+]
+
+.pull-right[
+
+* By sampling informative individuals instead of sampling at random, we could decrease the standard deviation associated with an estimate. For a fixed sample size we would be able to achieve higher power
+
+]
+
+---
+
+class: middle
+
+## The Lung Health Study (LHS)
+
+* LHS was a multi-center randomized clinical trial recruiting adults aged 35 to 60 with moderate lung function impairment. The intervention aimed at getting people to quit smoking.
+
+* Hansel et al. (2013) conducted a GWAS and identified two novel SNPs associated with accelerated lung function decline.
+
+* Even though Hansel et al. had complete DNA data, this is often not the case. In what follows we assume that genetic data had not yet been collected
+  
+---
+
+class: middle
+
+* We are going to consider 2,563 smokers with at least two observations and examine the association between one of the SNPs identified by Hansel et al. and the rate of lung function decline over time
+
+* We are going to consider a scenario where data on outcome and confounders are available on everyone, but data on SNP can only be collected on 800 subjects
+
+* The expensive exposure is the presence/absence of at least one copy of the T-allele at SNP rs177852
+
+* Two correlated longitudinal outcomes are: forced expiratory volume (FEV) in the first second of an exhalation following bronchodilators use, and forced vital capacity (FVC)
+  
+---
+
+class: middle
+  
+The model of interest is:
+
+$$Y_{1ij} = \beta_{10} + \beta_{1s}snp_i + \beta_{1t}t_{ij} + \boldsymbol{\beta_{1c}c_i}+ \color{darkblue}{\beta_{1st}}snp_{i}t_{ij} + b_{10i} + b_{11i}t_{ij} + \epsilon_{1ij}$$
+
+$$Y_{2ij} = \beta_{20} + \beta_{2s}snp_i + \beta_{2t}t_{ij} + \boldsymbol{\beta_{2c}c_i} + \color{darkblue}{\beta_{2st}}snp_{i}t_{ij}  + b_{20i} + b_{21i}t_{ij} + \epsilon_{2ij}$$
+
+* $Y_{1ij}$ is the FEV for subject $i$ at visit $j$
+
+* $Y_{2ij}$ is the FVC for subject $i$ at visit $j$
+
+* $snp_i$ is an indicator for the presence of at least one copy of the allele at rs177852
+
+* $(b_{10i}, b_{11i}, b_{20i}, b_{21i}) \sim N(\boldsymbol{0, D})$ are the random intercept and slope for subject $i$
+
+* $\boldsymbol{c_i}$ is a set of covariates
+
+* $(\epsilon_{1ij}, \epsilon_{2ij}) \sim N(\boldsymbol{0, \Sigma})$ are the error terms independent of the random effects
+
+---
+
+class: inverse, center, middle, hide-logo
+
+# Two-Phase Outcome Dependent Sampling
+
+---
+
+class: middle
+
+.pull-left[
+
+```{r, out.width='150%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('phase2.png')
+```
+
+]
+
+.pull-right[
+
+**Two-Phase Design** 
+
+Outcome and inexpensive covariates are observed on all subjects in phase one. A subset of the subjects is chosen for a phase two where the expensive exposure is measured
+
+**Outcome Dependent Sampling**
+
+Subjects for whom the exposure is collected are selected based on their observed outcome
+
+]
+
+---
+
+class: middle
+
+## Who Are the Most Informative Subjects?
+
+**Outcome dependent sampling aims to maximize observed response variability**
+
+* Cross-sectional binary outcome: the case-control study with an equal number of cases and controls is the most cost-efficient design
+
+* Cross-sectional continuous outcome: informative individuals are those with high or low values of the outcome
+
+---
+
+class: middle
+
+.pull-left[
+
+**Longitudinal Continuous Outcome**
+
+```{r, echo = FALSE, message = FALSE, fig.align = 'center', fig.height = 6, fig.retina=3}
+
+library(tidyverse)
+
+# function to generate data
+GenDat.RandomInt <- function(params = c(50, 2), n = 9, m = 5, tau, sigma){
+  # random intercept
+  gamma <- rep(rnorm(n, mean = 0, sd = tau), each = m)
+  # error term
+  error <- rnorm(m*n, mean = 0, sd = sigma)
+  # generate id
+  id <- rep(1:n, each = m)
+  # matrix of dixed effects
+  X <- cbind(1, rep(1:m, n))
+  # outcome Y
+  Y <- X %*% params + gamma + error
+  out <- data.frame(id = id, time = X[, 2], Y = Y)
+  return(out)
+}
+
+# generate the cases
+set.seed(304)
+case3 <- GenDat.RandomInt(tau = 1, sigma = 20)
+ggplot(case3, aes(x = time, y = Y, group = id, col = factor(id))) + 
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) + labs(x = "Time") + 
+  theme_bw() + scale_color_brewer(palette="Blues")
+
+```
+  
+
+]
+
+.pull-right[
+
+* The outcome is repeatedly collected over time. For a subject $i$ the outcome is a vector $\boldsymbol{Y}_i = (Y_1, ..., Y_{n_i})$
+
+* The multiple measures of the outcome allow us to separate changes over time within individuals from changes between individuals
+
+* Who the most informative individuals are will depend on whether our interest lies in a time-varying exposure or a time-fixed exposure
+]
+
+
+---
+
+class: middle
+
+## Design 1: ODS Design (Schildcrout et al, 2013)
+
+* Sample informative individuals based on their estimated subject-specific intercept and/or slope.
+
+* For each subject fit $E(Y_{ij}|t_{ij}) = q_{0i} + q_{1i}t_{ij}$
+  
+  - $q_{0i}$ is the subject-specific mean outcome at baseline, $q_{1i}$ is the subject-specific rate of change 
+  
+---
+
+class: middle
+
+.pull-left[
+
+**ODS Intercept**
+
+* Assign higher probability of being sampled to subjects with extreme $q_{0i}$
+
+```{r, echo = FALSE,  message=FALSE, fig.retina=3}
+# generate the cases
+set.seed(362)
+case3 <- GenDat.RandomInt(params = c(50, -2), n = 30, tau = 1, sigma = 10)
+
+## Function to get individual intercept and slope 
+LinRegFn <- function(data){  
+  X  <- cbind(1, data$time)
+  Xt <- t(X)
+  solve(Xt %*% X) %*% Xt %*% data$Y
+}
+CalcSSIntSlp <- function(Y, time, id){
+  data.tmp  <- data.frame(id = id, Y = Y, time = time)
+  data.list <- split(data.tmp, id)
+  L.id      <- c(unlist(tapply(id,id,length)))
+  mtx       <- matrix(unlist(lapply(data.list, LinRegFn)), byrow=TRUE, ncol=2)
+  out       <- list(Int = rep(mtx[,1], L.id), Slp = rep(mtx[,2], L.id))
+  return(out)
+}
+
+intSlp    <- CalcSSIntSlp(Y = case3$Y, time = case3$time, id = case3$id)
+case3$int <- intSlp[[1]]
+case3$slp <- intSlp[[2]]
+
+d_int <- case3 %>%
+  group_by(id) %>% arrange(int) %>% 
+  filter(int < 41 | int > 56)
+ggplot(case3, aes(x = time, y = Y, group = id, col = factor(id))) + 
+  geom_line(stat = "smooth", method = "lm", color = "darkblue", alpha = 0.1, size = 1) + 
+  labs(x = "Time") + coord_cartesian(ylim = c(25, 70)) +
+  theme_bw() + 
+  geom_line(data = d_int, stat = "smooth", method = "lm", color = "darkblue", size = 1)
+
+```
+
+]
+
+--
+
+.pull-right[
+
+**ODS Slope**
+
+* Assign higher probability of being sampled to subjects with extreme $q_{1i}$
+
+```{r, echo = FALSE, message = FALSE, fig.retina=3}
+d_slp <- case3 %>%
+  group_by(id) %>% arrange(slp) %>% 
+  filter(slp < -3.5 | slp > 1)
+ggplot(case3, aes(x = time, y = Y, group = id, col = factor(id))) + 
+  geom_line(stat = "smooth", method = "lm", color = "darkblue", alpha = 0.1, size = 1) + 
+  labs(x = "Time") + coord_cartesian(ylim = c(25, 70)) +
+  theme_bw() + 
+  geom_line(data = d_slp, stat = "smooth", method = "lm", color = "darkblue", size = 1)
+```
+
+]
+
+
+---
+
+class: middle
+
+* Sort values of $q_{0i}$ and/or $q_{1i}$ 
+
+* Introduce cutpoints that define sampling strata from which we sample with different probabilities
+
+
+```{r, out.width='200%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('Sampling.png')
+```
+
+
+
+---
+
+class: middle
+
+## Design 2: BDS Design (Sun et al, 2017)
+
+* Sample informative individuals based on the best linear unbiased predictor (BLUP) estimates of random intercept and slope
+
+* Fit $\quad Y_{ij} = \alpha_{0} + \alpha_{t}t_{ij} + \boldsymbol{\alpha_{c}c_i} + a_{0i} + a_{1i}t_{ij} + \epsilon_{ij}$
+  
+* Estimate $a_{0i}$ and $a_{1i}$
+  
+* Sort values of $a_{0i}$ and/or $a_{1i}$ and introduce cutpoints that define sampling strata from which we sample with different probabilities
+
+--
+
+* **BDS Intercept**. If we are interested in a time-fixed exposure we can assign higher probability of being sampled to subjects with extreme $a_{0i}$. 
+
+* **BDS Slope**. If we are interested in a time-varying exposure we can assign higher probability of being sampled to subjects with extreme $a_{1i}$. 
+
+---
+
+class: middle
+
+* ODS designs require each subject to be observed at least two times, while BDS designs can include subjects with one observation
+
+* BDS designs can be more cost-efficient than ODS designs when we have unbalanced data or when there is a strong association between the outcome and the confounders
+
+---
+
+class: middle
+
+## A Note
+
+* Sampling at the extremes can have practical difficulties:
+
+   - Requires a large underlying population available to have enough individuals with extreme values of the outcome
+   
+   - Results in sampling subjects with conditions that are not of interest
+   
+---
+
+class: middle
+
+## Analysis
+
+* Failure to account for the design will generally result in biased estimates
+
+* Analysis procedures that properly account for a two-phase ODS design can be divided in two groups:
+
+  - **Conditional Likelihood:** only include subjects sampled in phase two
+  
+  - **Full Likelihood:** combine complete information available on subjects sampled in phase two with partial information (outcome and confounders) available on subjects not sampled in phase two
+
+---
+
+
+class: inverse, center, middle, hide-logo
+
+# Two-Phase ODS with Multivariate Outcomes
+
+---
+
+class: middle
+
+# Why Multivariate Outcomes?
+
+* Many biomedical applications aim to study multiple (potentially correlated) outcomes
+
+* Permit efficiency gains for multiple targets
+
+* For example, the National Heart, Lung and Blood Institute Exome Sequencing Project sought to boost statistical power to detect genetic associations by oversampling subjects with extreme values of LDL cholesterol, blood pressure or BMI
+
+
+---
+
+class: middle
+
+.pull-left[
+
+**Independent Sampling**
+
+* Assign a fraction of individuals to be sampled based on outcome 1 and the remaining based on outcome 2
+
+* Use the univariate ODS or BDS to select the most informative subjects for each outcome
+
+```{r, echo = FALSE, fig.align = "center", out.width = "500px"}
+knitr::include_graphics("IndSampling.png")
+```
+
+]
+
+.pull-right[
+
+**Sequential Sampling**
+
+* Sample individuals based on outcome 1 first using univariate ODS or BDS
+
+* Sample the remaining individuals based on outcome 2 using  univariate ODS or BDS 
+
+```{r, echo = FALSE, fig.align = "center", out.width = "140px"}
+knitr::include_graphics("SeqSampling.png")
+```
+
+]
+
+---
+
+class: middle
+
+```{r, echo = FALSE, fig.retina=3, out.width = "600px", fig.align='center'}
+res <- read.csv("~/Documents/PhD/Research/ODS/ODSContinuous/OffsetImputation/BivariateLMM/IIA_ACML_BalancedIncomplete_SplitSampling/DesignPlot.csv")
+# darker point are Y1
+p1 <- ggplot(res, aes(x = Slp.Y1, y = Slp.Y2, col = var.sampled)) + 
+  geom_point(size = 0.5) + theme_bw() + 
+  labs(title = "(A) ODS Slope Sampling", x = unname(TeX("Subject-specific Slope (Y_{1})")), 
+       y = unname(TeX("Subject-specific Slope (Y_{2})"))) + 
+  scale_color_brewer(palette="Paired") +
+  geom_vline(xintercept = quantile(res$Slp.Y1, probs = c(0.15, 0.85))) +
+  geom_hline(yintercept = quantile(res$Slp.Y2, probs = c(0.15, 0.85))) + 
+  theme(legend.position = "none")
+p2 <- ggplot(res, aes(x = BLUP.Slp.Y1, y = BLUP.Slp.Y2, col = var.sampled)) + 
+  geom_point(size = 0.5) + theme_bw() +
+  labs(title = "(B) BDS Slope Sampling", x = unname(TeX("BLUP Random Slope (Y_{1})")), 
+       y = unname(TeX("BLUP Random Slope (Y_{2})"))) + scale_color_brewer(palette="Paired") +
+  geom_vline(xintercept = quantile(res$BLUP.Slp.Y1, probs = c(0.15, 0.85))) +
+  geom_hline(yintercept = quantile(res$BLUP.Slp.Y2, probs = c(0.15, 0.85))) + 
+  theme(legend.position = "none")
+p3 <- ggplot(res, aes(x = Int.Y1, y = Int.Y2, col = var.sampled)) + 
+  geom_point(size = 0.5) + theme_bw() +
+  labs(title = "(C) ODS Intercept Sampling", x = unname(TeX("Subject-specific Intercept (Y_{1})")), 
+       y = unname(TeX("Subject-specific Intercept (Y_{2})"))) + scale_color_brewer(palette="Paired") +
+  geom_vline(xintercept = quantile(res$Int.Y1, probs = c(0.15, 0.85))) +
+  geom_hline(yintercept = quantile(res$Int.Y2, probs = c(0.15, 0.85))) + 
+  theme(legend.position = "none")
+p4 <- ggplot(res, aes(x = BLUP.Int.Y1, y = BLUP.Int.Y2, col = var.sampled)) + 
+  geom_point(size = 0.5) + theme_bw() +
+  labs(title = "(D) BDS Intercept Sampling", x = unname(TeX("BLUP Random Intercept (Y_{1})")), 
+       y = unname(TeX("BLUP Random Intercept (Y_{2})"))) + scale_color_brewer(palette="Paired") +
+  geom_vline(xintercept = quantile(res$BLUP.Int.Y1, probs = c(0.15, 0.85))) +
+  geom_hline(yintercept = quantile(res$BLUP.Int.Y2, probs = c(0.15, 0.85))) + 
+  theme(legend.position = "none")
+
+
+ggpubr::ggarrange(p1, p2, p3, p4, ncol=2, nrow=2)
+```
+
+---
+
+class: middle
+
+## Re-Use Data
+
+* Using multivariate outcomes allow us to re-use data from a previous two-phase ODS study where sampling was conducted based on outcome 1, but interest shifts to the association between the expensive exposure and outcome 2
+
+* Re-using data can be seen as a special case of independent sampling where we assign each subject to be sampled based on outcome 1
+
+---
+
+class: middle
+
+## Conditional Likelihood Approach
+
+* We consider $w = 2$ outcomes and assume $n$ individuals are sampled for phase two
+
+* The conditional likelihood approach explicitly conditions on a subject being sampled for phase two. Analyses are based on the ascertainment corrected log-likelihood:
+
+$$\small{\sum_{i = 1}^{n} \left[logf(\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i} | snp_i, \boldsymbol{t}_i,\boldsymbol{c}_i) - \underbrace{\color{darkblue}{\sum_{w = 1}^{2}\tau_{wi}log\left\{\sum_{k}\pi(R_{wk})\int_{R_{wk}}f(\boldsymbol{q}_{wi}|snp_i, \boldsymbol{t}_i,\boldsymbol{c}_i)d\boldsymbol{q}_{wi}\right\}}}_{\text{ASCERTAINMENT CORRECTION}}\right]}$$
+--
+
+* $\pi(R_{wk})$ is the probability of being sampled associated to stratum $R_{wk}$
+
+* $q_{wi}$ is the subject $i$ observed value of the sampling variable for outcome $w$
+
+* $\tau_{wi}$ indicates whether subject $i$ has been assigned to be sampled based on outcome $w$
+
+---
+
+## Multiple Imputation
+
+* We fill-in the missing data on $snp$ in individuals not sampled $(S_i = 0)$ by drawing from $[snp_i|\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i, S_i = 0]$
+
+* Because sampling depends only on $(\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i)$:
+
+$$\small{pr(snp_i|\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i, S_i = 0) = pr(snp_i|\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i) = pr(snp_i|\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i, S_i = 1)}$$
+* We build the imputation model using available data on all subjects. By Bayes' theorem:
+
+$$\small{\frac{pr(snp_i = 1|\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i, S_i = 0)}{pr(snp_i = 0|\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i},\boldsymbol{t}_i,\boldsymbol{c}_i, S_i = 0)} = \frac{f(\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i}|snp_i = 1, \boldsymbol{t}_i, \boldsymbol{c}_i)}{f(\boldsymbol{Y}_{1i},\boldsymbol{Y}_{2i}|snp_i = 0, \boldsymbol{t}_i, \boldsymbol{c}_i)} \times \frac{pr(snp_i = 1 | \boldsymbol{t}_i, \boldsymbol{c}_i)}{pr(snp_i = 0 | \boldsymbol{t}_i, \boldsymbol{c}_i)}}$$
+---
+
+class: middle
+
+
+* We assume the Gaussian linear mixed effects model and we let $\boldsymbol{Y}_i = (\boldsymbol{Y}_{1i}, \boldsymbol{Y}_{2i})$, $\boldsymbol{\mu}_{x,i} = E(\boldsymbol{Y}_i|snp_i = x, \boldsymbol{t}_i,\boldsymbol{c}_i)$ and $\boldsymbol{V}_i = Var(\boldsymbol{Y}_i|snp_i, \boldsymbol{t}_i,\boldsymbol{c}_i)$
+
+* After log-transforming both sides of the equation, the imputation model becomes:
+
+
+$$\small{\color{darkblue}{\boldsymbol{Y}_i^T\boldsymbol{V}_i^{-1}\left(\boldsymbol{\mu}_{1,i} - \boldsymbol{\mu}_{0,i}\right) - \frac{1}{2}\left(\boldsymbol{\mu}_{1,i}^T\boldsymbol{V}_i^{-1}\boldsymbol{\mu}_{1,i} - \boldsymbol{\mu}_{0,i}^T\boldsymbol{V}_i^{-1}\boldsymbol{\mu}_{0,i}\right)} + log\left[\frac{pr(snp_i = 1 | \boldsymbol{c}_i)}{pr(snp_i = 0 | \boldsymbol{c}_i)}\right]}$$
+
+* The imputation model is an offsetted logistic regression
+
+---
+
+class: middle
+
+## Algorithm
+
+.small[
+
+1) On sampled subjects, fit the linear mixed effects model of interest to obtain estimates $\hat{\boldsymbol{\beta}}^{(0)}$ and $\widehat{Cov}(\hat{\boldsymbol{\beta}}^{(0)})$ 
+
+2) Draw $\beta^{(k)}$ from $N(\hat{\boldsymbol{\beta}}^{(k-1)}, \widehat{Cov}(\hat{\boldsymbol{\beta}}^{(k-1)}))$ and calculate the offset
+
+3) Fit the logistic imputation model using the offset calculated in 2) and obtain the parameters $\hat{\boldsymbol{\gamma}}^{(k)}$ and $\widehat{Cov}(\hat{\boldsymbol{\gamma}}^{(k)})$ 
+
+4) Draw $\boldsymbol{\gamma}^{(k)}$ from $N(\hat{\boldsymbol{\gamma}}^{(k)}, \widehat{Cov}(\hat{\boldsymbol{\gamma}}^{(k)}))$ and calculate $\hat{p}^{(k)} = P(snp_i = 1 |\boldsymbol{c}_i;\boldsymbol{\gamma}^{(k)})$
+
+5) For unsampled subjects impute $snp_i$ using $\hat{p}^{(k)}$
+
+6) Fit the linear mixed effect model of interest on everyone to obtain estimates $\hat{\boldsymbol{\beta}}^{(k)}$ and $\widehat{Cov}(\hat{\boldsymbol{\beta}}^{(k)})$ 
+
+]
+
+--
+
+.small[
+
+7) Repeat steps 2) to 6) $m$ times to create a complete dataset, fit the linear mixed effects model of interest on the complete data, and store the results
+
+8) Repeat the imputation + analysis $M$ times and combine the results using Rubin's rule
+
+]
+
+---
+
+class: inverse, center, middle, hide-logo
+
+# Results
+
+---
+
+class: middle
+
+## Simulation Study
+
+* We generate data from the bivariate mixed effects model:
+
+$$\small{
+Y_{1ij} = \beta_{10} + \beta_{1s}snp_{i} + \beta_{1t}t_{ij} + \beta_{1st}snp_{i}t_{ij} + \beta_{1c}c_{i} + \beta_{1ct}c_{i}t_{ij} + b_{10i} + b_{11i}t_{ij} + \epsilon_{1ij}
+}$$
+
+$$\small{
+Y_{2ij} = \beta_{20} + \beta_{2s}snp_{i} + \beta_{2t}t_{ij}  + \beta_{2st}snp_{i}t_{ij} + \beta_{2c}c_{i} +  \beta_{2ct}c_{i}t_{ij} + b_{20i} + b_{21i}t_{ij} + \epsilon_{2ij}
+}$$
+
+* $Pr(snp_{i} = 1) = 0.3$
+
+* $c_i \sim N(-0.15 + \delta_s snp_i, 1)$ where $\delta_s$ controls the correlation between $snp_i$ and $c_i$
+
+* We assume that data on outcome and confounders are available on 2,400 subjects, but due to resource constraints we can only collect $snp$ on 800 subjects
+
+---
+
+class: middle
+
+* We consider 3 designs:
+
+  - simple random sampling (RS)
+  
+  - ODS slope sampling
+  
+  - BDS slope sampling
+
+* For each outcome $w$, we define three regions and select $(N_{w1}, N_{w2}, N_{w3})$ subjects from the three regions
+
+* We estimate the parameters of interest using the ascertainment corrected log-likelihood and multiple imputation
+
+| Scenario | $(N_{w1}, N_{w2}, N_{w3})$ | $\delta_s$ |
+|:--------:|:--------------------------:|:----------:|
+|     A    | (150, 100, 150)            |  -0.05     |
+|     B    | (150, 100, 150)            |  -2        |
+|     C    | (180, 40, 180)             |  -0.05     |
+
+---
+
+class:middle
+
+We consider 6 design + inference procedures:
+
+.pull-left[
+
+**Consider the 800 people sampled in phase two**
+
+* RS with maximum likelihood
+  
+* ODS slope with ascertainment corrected maximum likelihood
+  
+* BDS slope with ascertainment corrected maximum likelihood   
+
+]
+
+--
+
+.pull-right[
+
+**Consider everyone regardless of sampling status**
+
+* RS with multiple imputation
+  
+* ODS slope with multiple imputation
+  
+* BDS slope with multiple imputation  
+
+]
+  
+ 
+
+
+---
+
+class:middle
+
+.pull-left[
+
+```{r, out.width='150%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('Biassim.png')
+```
+
+]
+
+.pull-right[
+
+```{r, out.width='150%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('CIsim.png')
+```
+
+]
+
+---
+
+class: middle
+
+
+.pull-left[
+
+* We compute the relative efficiency for each design + inference procedure:
+
+$$\frac{Var_{\text{RS+ML}}(\hat{\beta})}{Var_{\text{D+I}}(\hat{\beta})}$$
+
+* Efficiency gain is mainly due to the design
+
+* For the imputation approach, efficiency gains were larger when increasing the correlation between $c_i$ and $snp_i$
+
+* Efficiency gains were larger when sampling was more extreme
+
+]
+
+.pull-right[
+```{r, out.width='100%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('releffhistMI.png')
+```
+]
+
+
+---
+
+class:middle
+
+* We re-use data from a previous two-phase ODS design where we sampled 400 subjects (out of 2,400) using ODS slope based on $Y_{1ij}$
+
+* We are interested in the association between the expensive exposure and $Y_{2ij}$
+
+```{r, out.width='150%', fig.align='center', echo=FALSE, fig.retina=3}
+knitr::include_graphics('ReuseResults.png')
+```
+
+---
+
+class: middle
+
+## The Lung Health Study
+
+* Subjects were followed-up over a 5 years period (66% of individuals had outcome data measured at each follow-up time)
+
+* 56% of individuals had at least one copy of the T-allele at rs177852
+
+* We sample 800 subjects and examine three design: Random Sampling (RS), ODS Slope and BDS Slope
+
+* For ODS Slope and BDS Slope we sample 400 people based on FEV and 400 people based on FVC
+  
+---
+
+class: middle
+
+```{r, echo = FALSE, fig.align = "center", out.width = "800px"}
+knitr::include_graphics("lhsCI.png")
+```
+
+---
+
+class: middle
+
+# Summary
+
+* We introduced two-phase ODS design for a single outcome and discuss possible study designs and inference procedures
+
+* We discussed extensions of the two-phase ODS to multivariate longitudinal outcome and introduce two methods that can be used to estimate the parameters
+
+* We demonstrated how considering a multivariate outcome allows us to re-use data from a previously conducted two-phase ODS with a single longitudinal outcome
+
+* We examined finite sampling operating characteristics of the proposed approaches and demonstrated how the proposed designs and estimation procedure can be used to examine genetic associations with lung function decline
+
+---
+
+class: inverse, center, middle, hide-logo
+
+# Thank you!
+
+---
+
+
+class: middle
+
+# References
+
+.small[
+
+Di Gravio C, Tao R, Schildcrout J. Design and analysis of two-ohase studies with multivariate longitudinal data. _Submitted_
+
+Hansel, N. et al (2013) Genome-wide study identifies two loci associated with lung function decline in mild to moderate COPD. Human Genetics. 132, 79–90.
+
+Lin, D et al (2013). Quantitative trait analysis in sequencing studies under trait-dependent sampling. PNAS. 110, 12247–12252.
+
+Schildcrout, J. et al (2013). Outcome vector dependent sampling with longitudinal continuous response data: stratified sampling based on summary statistics. Biometrics. 69, 405–16.
+
+Schildcrout, J. et al (2020). Two-phase, generalized case-control designs for the study of quantitative longitudinal outcomes. American Journal of Epidemiology. 189(2), 81-90.
+
+Sun, Z. et al (2017). Exposure enriched outcome dependent designs for
+longitudinal studies of gene-environment interaction. Statistics in Medicine. 36, 2947–2960.
+
+van Buuren, S (2018). Flexible imputation of missing data, second edition. Chapman and Hall/CRC
+
+Zhou, H et al (2002) A semiparametric empirical likelihood method for data from an outcome-dependent sampling scheme with a continuous outcome. Biometrics. 58, 413-421
+
+]
+
