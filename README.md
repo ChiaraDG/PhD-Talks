@@ -8,4 +8,4 @@ Repository containing slides from all the talks I gave during my PhD.
 4. [Department of Biostatistics - Vanderbilt University 2021. Design and Analysis of a Two-Phase Study for Multivariate Longitudinal Outcomes](https://github.com/ChiaraDG/PhD-Talks/blob/main/VUSeminar2021/SeminarSlides.pdf)
 5. [ENAR 2022. Efficient Design and Analysis of a Two-Phase Study with Longitudinal Binary Outcomes](https://github.com/ChiaraDG/PhD-Talks/blob/main/ENAR2022/ENARslide.pdf)
 6. [SICT Group 2022. Efficient Design and Analysis of a Two-Phase Study with Longitudinal Binary Outcomes](https://github.com/ChiaraDG/PhD-Talks/tree/main/SICT2022)
-7. [ENAR 2022. Efficient Study Designs and Analysis methods for Binary Longitudinal Data: An Application to the Lung Health Study](https://github.com/ChiaraDG/PhD-Talks/tree/main/ENAR2023)
+7. [ENAR 2023. Efficient Study Designs and Analysis methods for Binary Longitudinal Data: An Application to the Lung Health Study](https://github.com/ChiaraDG/PhD-Talks/tree/main/ENAR2023)
